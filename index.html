@@ -1,9 +1,10 @@
 <html>
+
 <head>
     <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
-  
+
     <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vuex/2.1.1/vuex.min.js"></script>
@@ -14,23 +15,29 @@
     .preview canvas {
         max-width: 100px;
     }
+
     .preview-image img {
         max-width: 100px;
     }
+
     .preview-wrapper.active .preview-image img {
         border: 2px solid #0275ff;
     }
+
     .preview-wrapper {
         position: relative;
         width: 100px;
         height: 50px;
     }
+
     .preview-wrapper .preview-image {
         width: 100px;
         height: 55px;
         position: absolute;
-        left: 0px; top: 0px
+        left: 0px;
+        top: 0px
     }
+
     .preview-wrapper .time {
         bottom: -7px;
         background-color: #ffffff82;
@@ -39,12 +46,14 @@
         width: 40px;
         padding-left: 4px;
     }
+
     .preview-wrapper .options {
         top: 10px;
         position: absolute;
         z-index: 12;
         left: 30px;
     }
+
     .preview-wrapper .text-caption {
         top: 0px;
         position: absolute;
@@ -52,32 +61,47 @@
         background-color: white;
         z-index: 13;
     }
+
     .thin-button {
         padding: 0 0px !important;
         min-width: 20px !important;
         height: 20px !important;
     }
+
     .answer .v-text-field__details {
         display: none;
     }
+
     .question-wrapper {
         position: relative;
         text-align: center;
-        background-color: rgba(255,255,255,0.6);
+        background-color: rgba(255, 255, 255, 0.6);
         padding: 10px;
         display: flex;
         justify-content: center;
-        align-items: center; 
+        align-items: center;
     }
-    .question-wrapper > div > div {
+
+    .question-wrapper>div>div {
         margin-bottom: 5px;
     }
+
     .question-wrapper .title {
         margin-bottom: 15px;
         margin-top: 10px;
         padding: 10px 50px;
         font-size: 22px !important;
     }
+
+    .question-preview {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        z-index: 11;
+        height: 320px;
+        width: 100%;
+    }
+
     button.timeSelected {
         color: #0275ff !important;
         font-size: 15px !important;
@@ -94,15 +118,10 @@
                                 <v-col cols="12">
                                     <div style="position: relative; min-height: 320px;">
                                         <video ref="video" style="position:absolute;top:0px;left:0px;z-index:10;height:320px;" class="" id="video">
-                                            <source src="../videos/test.mp4" type="video/mp4"></source>
+                                            <source src="./test.mp4" type="video/mp4">
+                                            </source>
                                         </video>
-                                        <question-preview
-                                            v-if="editQuestion !== null && isVideoTimeQuestionTime"
-                                            style="position:absolute;top:0px;left:0px;z-index:11;height:320px;width:100%;"
-                                            :key="editQuestion.id"
-                                            :question="editQuestion"
-                                            @choose-answer="(a) => chooseAnswer(a)"
-                                        />
+                                        <question-preview v-if="editQuestion !== null && isVideoTimeQuestionTime" :id="`question-preview-${editQuestion.id}`" class="question-preview" :key="editQuestion.id" :question="editQuestion" @choose-answer="(a) => chooseAnswer(a)" />
                                     </div>
                                 </v-col>
                                 <v-col cols="12">
@@ -113,9 +132,7 @@
                                         <template v-for="(question,index) in questions">
                                             <!--{{ question }} -->
                                             <div :style="`position:absolute;z-index:10;width: 3px; top:-24px; left:${-2 + parseInt(554 * question.time/$refs.video.duration)}px`"><v-btn :class="{primary:(editQuestion && question.id === editQuestion.id)}" class="thin-button" @click="selectQuestion(question)">&#128488</v-btn></div>
-                                            <div 
-                                                v-for="(answer,index2) in question.answers.filter((a)=> a.action === 'pick')" 
-                                                :style="`position:absolute;width: 3px; top:-24px; left:${-2 + parseInt(554 * answer.time/$refs.video.duration)}px`">
+                                            <div v-for="(answer,index2) in question.answers.filter((a)=> a.action === 'pick')" :style="`position:absolute;width: 3px; top:-24px; left:${-2 + parseInt(554 * answer.time/$refs.video.duration)}px`">
                                                 <v-btn v-if="answer.time > -1" plain small :class="{timeSelected:question.id === editQuestion.id}" class="thin-button" @click="selectQuestion(question, answer)">|</v-btn>
                                             </div>
                                         </template>
@@ -130,28 +147,19 @@
                                         <v-icon class="play-pause" v-else>mdi-pause</v-icon>
                                     </v-btn>
                                     <template v-if="firstPlayed">
-                                        <v-btn v-if="!isVideoTimeQuestionTime && !seekAnswerVideo && !seekQuestionVideo" @click="addQuestion()">Frage hinzufügen</v-btn>
-                                        <v-btn class="warning" v-else @click="deleteQuestion()">Frage löschen</v-btn>
+                                        <v-btn v-if="!isVideoTimeQuestionTime && !seekAnswerVideo && !seekQuestionVideo" @click="addQuestion()">Add Answer</v-btn>
+                                        <v-btn class="warning" v-else @click="deleteQuestion()">Delete Question</v-btn>
                                     </template>
-                                </v-col>                         
+                                </v-col>
                             </v-row>
                         </v-col>
                         <v-col cols="6" v-if="editQuestion !== null && showQuestion" class="pt-12">
                             <v-row>
-                                <v-col cols="12" id="question-video-offset" class="video-seek"> 
-                                    <video-seek-preview
-                                        :class="{active: seekQuestionVideo}"
-                                        :key="questionKey"
-                                        :draw-default="true"
-                                        :time="editQuestion.time"
-                                        :image="editQuestion.image"
-                                        :reset="videoSeekReset"
-                                        @select="$refs.video.currentTime = editQuestion.time"
-                                        @time="setQuestionTime"
-                                    />
+                                <v-col cols="12" id="question-video-offset" class="video-seek">
+                                    <video-seek-preview :class="{active: seekQuestionVideo}" :key="questionKey" :draw-default="true" :time="editQuestion.time" :image="editQuestion.image" :reset="videoSeekReset" @select="$refs.video.currentTime = editQuestion.time" @time="setQuestionTime" />
                                 </v-col>
                                 <v-col cols="12">
-                                    <v-textarea v-model="editQuestion.title" rows="3" filled label="Text/Frage"></v-textarea>
+                                    <v-textarea v-model="editQuestion.title" rows="3" filled label="Text"></v-textarea>
                                 </v-col>
                             </v-row>
                             <v-row class="answer" v-for="(answer,index) in editQuestion.answers" outlined>
@@ -159,40 +167,21 @@
                                     <v-text-field v-model="answer.text" filled :label="`Antwort ${index+1}`"></v-text-field>
                                 </v-col>
                                 <v-col v-if="answer.text.length > 0" cols="4">
-                                    <v-select
-                                        filled
-                                        label="Aktion"
-                                        v-model="answer.action"
-                                        :items="answerActionItems"
-                                        @change="changeAnswerAction(answer)"
-                                    ></v-select>
+                                    <v-select filled label="Aktion" v-model="answer.action" :items="answerActionItems" @change="changeAnswerAction(answer)"></v-select>
                                 </v-col>
                                 <v-col v-if="answer.text.length > 0 && answer.action === 'pick'" cols="2">
                                     <div :id="`answer-seek-${answer.id}`" class="video-seek">
-                                        <video-seek-preview
-                                            :draw-default="false"
-                                            :time="answer.time"
-                                            :image="answer.image"
-                                            :reset="videoSeekReset"
-                                            @select="$refs.video.currentTime = answer.time"
-                                            @time="setAnswerTime(answer)"
-                                        /> 
+                                        <video-seek-preview :draw-default="false" :time="answer.time" :image="answer.image" :reset="videoSeekReset" @select="$refs.video.currentTime = answer.time" @time="setAnswerTime(answer)" />
                                     </div>
                                 </v-col>
                                 <v-col v-if="answer.text.length > 0 && answer.action === 'goTo'" cols="2">
-                                    <v-select
-                                        filled
-                                        label="Antwort"
-                                        v-model="answer.goToId"
-                                        :items="answerActionTimes"
-                                        @change="changeAnswerAction(answer)"
-                                    ></v-select>
+                                    <v-select filled label="Antwort" v-model="answer.goToId" :items="answerActionTimes" @change="changeAnswerAction(answer)"></v-select>
                                 </v-col>
                                 <v-col cols="2"><v-btn @click="editQuestion.answers.splice(index, 1);" x-small fab plain><v-icon>mdi-close</v-icon></v-btn></v-col>
-                                
+
                             </v-row>
 
-                           <!--<v-row v-if="editQuestion.title.length > 0">
+                            <!--<v-row v-if="editQuestion.title.length > 0">
                                 <v-col cols="12"><v-btn @click="addAnswer()">Antwort hinzufügen</button></v-row></v-col>
                             </v-row>-->
                         </v-col>
@@ -205,351 +194,10 @@
         </v-app>
     </div>
 
-    <script>
+    <script type="module" src="main.js">
 
-        Vue.component('question-preview', {
-            template: `
-            <div class="question-wrapper" v-if="question.title">
-                <div>
-                    <div class="title" style="white-space:pre-line;">{{question.title}}</div>
-                    <div v-for="(a,index) in question.answers">
-                        <v-btn v-if="a.text.length > 0" @click="$emit('choose-answer', a)">{{a.text}}</v-btn>
-                    </div>
-                </div>
-            </div>
-            `,
-            props: {
-                question: Object
-            },
-            data: () => {
-                return {
-                    score: 0
-                }
-            },
-            mounted() {
-                console.log('iqestion mounted', this.t);
-                
-            },
-            watch: {
-                question() {
-                    console.log('q', this.question)
-                },
-                t() {
-                    console.log('t', this.t)
-                }
-            }
-        });
 
-        var app = new Vue({
-            el: '#app',
-            vuetify: new Vuetify(),
-            'store': new Vuex.Store({
-                state: {
-                },
-                mutations: {
-                }
-            }),
-            data: {
-                showQuestion: false,
-                questions: [],
-                editQuestion: {
-                    id: '0',
-                    time: 0,
-                    title: '',
-                    image: '',
-                    answers: [
-                    ]
-                },
-                seekQuestionVideo: false,
-                seekAnswerVideo: false, 
-                currentAnswer: null,
-                videoSeekReset: 0,
-                interactive: true,
-                videoCurrentTime: -1,
-                videoPaused: true,
-                isVideoTimeQuestionTime: false,
-                firstPlayed: false
-            },
-            mounted() {
-                document.body.addEventListener('click', (e) => {
-                    // disable selecting video position
-                    if (e.target.type !== 'range' && !e.target.classList.contains('video-time-change-button') && !e.target.classList.contains('play-pause')) {
-                        if (this.seekQuestionVideo || this.seekAnswerVideo) {
-                            this.setPreviewImages();
-                        }
-                        this.seekAnswerVideo = false;
-                        this.seekQuestionVideo = false;
-                        this.videoSeekReset++;
-                        if (this.editQuestion) {
-                            const a = this.editQuestion.answers;
-                            if (a.length < 1 || (a[a.length - 1].text.length > 0 && a[a.length - 1].time > -1)) {
-                                this.addAnswer();
-                            }
-                        }
-                    }
-                }, true);
-
-                const slider = this.$refs.videoRange;
-                const video = this.$refs.video;
-                const _self = this;
-                slider.oninput = function() {
-                    video.currentTime = video.duration / 10000.0 * this.value;
-                    console.log("slider video.currentTime:", video.currentTime);
-                }
-                let count = 0;
-
-                setInterval( () => {
-                    console.log('video.currentTime:', video.currentTime);
-                    if (this.interactive) {
-                        this.isVideoTimeQuestionTime = false;
-                        this.questions.forEach((q) => {
-                            if (this.isVideoTimeQuestionTime) return;
-                            this.isVideoTimeQuestionTime = this.round(q.time) === this.round(video.currentTime); 
-                            if (this.isVideoTimeQuestionTime) {
-                                if (!this.seekAnswerVideo && !this.seekQuestionVideo) {
-                                    video.pause();
-                                    this.videoPaused = true;
-                                    this.editQuestion = q;
-                                }
-                            }
-                        });
-                    }
-                    this.videoCurrentTime = this.$refs.video.currentTime;
-
-                }, 100);
-                
-                video.ontimeupdate = () => {
-                    this.setPreviewImages();
-                    this.firstPlayed = true;
-                }
-
-                video.onloadeddata = () => {
-                    const qu = localStorage.getItem('questions')
-                    if (qu !== null) {
-                        try { this.questions = JSON.parse(qu); } catch (e) {}
-                    }
-                    setInterval( () => {
-                        let q = this.questions;
-                        localStorage.setItem('questions', JSON.stringify(q));
-                    }, 3000);
-                }
-
-            },
-            computed: {
-                answerActionTimes() {
-                    let answers = [{value: '', text: ''}];
-                    this.questions.forEach((q) => {
-                        q.answers.filter(a => a.action === 'pick').forEach((a) => {
-                            answers.push({value: a.id, text: a.text })
-                        })
-                    })
-                    return answers;
-                },
-                answerActionItems() {
-                    const a = [
-                        { value: 'continue', text: 'Video Fortsetzen' },
-                        { value: 'pick', text: 'Gehe zu Frame ...' }
-                    ];
-
-                    if (this.answerActionTimes.length > 0) {
-                        a.push({ value: 'goTo', text: 'Gehe zu Antwort ...'});
-                    }
-                    return a;
-                }
-            }, 
-            methods: {
-                round(n) {
-                    return Math.round((n + Number.EPSILON) * 10) / 10;
-                },
-                setPreviewImages() {
-                    const slider = this.$refs.videoRange;
-                    const video = this.$refs.video;
-                    slider.value = video.currentTime / video.duration * 10000.0;
-                    if (this.seekQuestionVideo) {
-                        this.editQuestion.image = this.getCurrentVideoImage();
-                        this.editQuestion.imageSize = this.editQuestion.image.length;
-                        this.editQuestion.time = video.currentTime;
-                    } else if (this.seekAnswerVideo && this.currentAnswer.action === 'pick') {
-                        this.currentAnswer.image = this.getCurrentVideoImage();
-                        this.currentAnswer.time = video.currentTime; 
-                    }
-                },
-                addQuestion() {
-                    this.$refs.video.pause();
-                    this.videoPaused = true;
-                    this.questionKey = this.uuid();
-                    this.editQuestion = { id: this.uuid(), time: this.$refs.video.currentTime, title: '', answers: [], image: 'about:blank' };
-                    this.questions.push(this.editQuestion);
-                    this.createQuestionImage();                    
-                    this.showQuestion = true;
-                    this.seekQuestionVideo = true;
-                },
-                deleteQuestion() {
-                    const editId = this.editQuestion.id;
-                    this.editQuestion = null;
-                    const newQuestions = [];
-                    for(const i in this.questions) {
-                        if (editId !== this.questions[i].id) {
-                            newQuestions.push(this.questions[i]);
-                        }
-                    }
-                    this.questions = newQuestions;  
-                },
-                createQuestionImage() {
-                    this.editQuestion.image = this.getCurrentVideoImage();
-                    this.editQuestion.imageSize = this.editQuestion.image.length;
-                },
-                getCurrentVideoImage() {
-                    const video = this.$refs.video;
-                    const canvas = this.$refs.canvas;
-                    canvas.width = video.videoWidth / 5;
-                    canvas.height = video.videoHeight / 5; 
-                    this.ctx = canvas.getContext('2d');
-                    this.ctx.drawImage(video, 0, 0, video.videoWidth / 5, video.videoHeight / 5); 
-                    return canvas.toDataURL('image/jpeg', 0.5);
-                },
-                selectQuestion(question, answer=null) {
-                    const uuid = this.uuid();
-                    const store = this.$store;
-                    const video = this.$refs.video;
-                    this.seekQuestionVideo = false;
-                    this.seekAnswerVideo = false;
-                    this.questionKey = this.uuid();
-                    this.$refs.video.currentTime = question.time;
-
-                    setTimeout(() => {
-                        this.editQuestion = question;
-                        this.questionKey = uuid;
-                        this.showQuestion = true;
-                        this.firstPlayed = true;
-                    }, 100)
-                },
-                addAnswer() {
-                    this.currentAnswer = {id: this.uuid(), text: '', time: -1, image: '', action: ''}
-                    this.editQuestion.answers.push(this.currentAnswer);
-                },
-                changeAnswerAction(answer) {
-                    
-                    if (answer.action === 'pick') {
-                        // this.currentAnswer = answer; 
-                    } else { // auto add new answer
-                        answer.time = 0;
-                    }
-                },
-                uuid() {
-                    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-                        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-                    );
-                },
-                setQuestionTime() {
-                    this.seekAnswerVideo = false;
-                    this.seekQuestionVideo = true;
-                },
-                setAnswerTime(answer) {
-                    this.seekQuestionVideo = false;
-                    this.seekAnswerVideo = true;
-                    this.currentAnswer = answer;
-                },
-                togglePlay() {
-                    const v = this.$refs.video;
-                    if(this.videoPaused) {
-                        v.currentTime += 0.1; 
-                        v.play();
-                    } else {
-                        v.pause();
-                    }
-                    this.firstPlayed = true;
-                    this.videoPaused = v.paused;
-                },
-                chooseAnswer(answer) {
-                    // TODO fade
-                    if (answer.action === 'pick') {
-                        this.$refs.video.currentTime = answer.time;
-                    } else if (answer.action === 'continue') {
-                        this.$refs.video.currentTime = this.$refs.video.currentTime + 0.1; 
-                    } else if (answer.action === 'goTo') {
-                        const a = this.searchAnswerById(answer.goToId);
-                        this.$refs.video.currentTime = a.time + 0.1; 
-                    }
-                    this.$refs.video.play();
-                    this.videoPaused = false;
-                },
-                searchAnswerById(id) {
-                    let answer = null;
-                    this.questions.forEach((q) => {
-                        q.answers.forEach((a) => {
-                            if (a.id === id) {
-                                answer = a;
-                            }
-                        });
-                    });
-                    return answer;
-                },
-                resetStorage() {
-                    localStorage.removeItem('questions');
-                    document.location.reload();
-                }
-            }
-        });
-
-        Vue.component('video-seek-preview', {
-            template: `
-            <div @click="clickPreview" class="preview-wrapper">
-                <div class="preview-image"><img :src="image"></div>
-                <div v-if="showTextCaption" class="text-caption">Wähle eine neue Position im Video Player</div>
-                <div class="time">{{ timeFormatted }}</div>
-                <div v-if="showOptions" class="options"><v-btn @click="seekNewOffset()" x-small fab><v-icon class="video-time-change-button">mdi-clock</v-icon></v-btn></div>
-            </div>
-            `,
-            props: {
-                drawDefault: Boolean,
-                image: String,
-                time: Number,
-                reset: Number
-            },
-            data: () => {
-                return {
-                    showTextCaption: true,
-                    showOptions: false,
-                }
-            },
-            watch: {
-                image () {
-                    this.showTextCaption = false;
-                },
-                reset () {
-                    this.showTextCaption = false;
-                    this.showOptions  = false;
-                }
-            },
-            mounted() {
-                if (this.drawDefault || this.image !== '') {
-                    this.showTextCaption = false;
-                } else {
-                    this.seekNewOffset();
-                }
-            },
-            computed: {
-                timeFormatted() {
-                    let secs = (parseInt(this.time)%60).toString();
-                    if(secs.length < 2) secs = '0' + secs;
-                    return parseInt(this.time/60) + ':' + secs; 
-                }
-            },
-            methods: {
-                clickPreview() {
-                    if(!this.showTextCaption) {
-                        this.showOptions = !this.showOptions;
-                        this.$emit('select')
-                    }
-                },
-                seekNewOffset() {
-                    this.showOptions = false;
-                    this.showTextCaption = true;
-                    this.$emit('time');
-                }
-            }
-        });
     </script>
 </body>
+
 </html>
