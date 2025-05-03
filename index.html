@@ -108,7 +108,7 @@
     }
 </style>
 <body>
-    <div id="app" class="text-3xl">
+    <v-app id="app" class="text-3xl">
         <v-app>
             <v-main>
                 <v-container>
@@ -116,11 +116,22 @@
                         <v-col cols="6">
                             <v-row class="mt-2">
                                 <v-col cols="12">
+                                    <v-row style="z-index: 100;">
+                                        <!--<v-text-field label="Video URL" v-model="filepathInput"></v-text-field>-->
+                                        <v-combobox
+                                        v-model="filepathInput"
+                                        label="Combobox"
+                                        :items="filepathHistory"
+                                        ></v-combobox>
+                                        <v-btn v-if="filepath !== filepathInput" @click="loadFilepathInput()">Load</v-btn>
+                                    </v-row>
                                     <div style="position: relative; min-height: 320px;">
-                                        <video ref="video" style="position:absolute;top:0px;left:0px;z-index:10;height:320px;" class="" id="video">
-                                            <source src="./test.mp4" type="video/mp4">
+                                        <div v-if="isYTVideo" id="ytPlayer" style="position:absolute;left:0px;top:0px;height:320px;"></div>
+                                        <video v-else ref="video" style="position:absolute;top:0px;left:0px;z-index:10;height:320px;" class="" id="video">
+                                            <source :src="filepath" type="video/mp4">
                                             </source>
                                         </video>
+                                        
                                         <question-preview v-if="editQuestion !== null && isVideoTimeQuestionTime" :id="`question-preview-${editQuestion.id}`" class="question-preview" :key="editQuestion.id" :question="editQuestion" @choose-answer="(a) => chooseAnswer(a)" />
                                     </div>
                                 </v-col>
@@ -131,12 +142,12 @@
                                     <div style="position: relative;">
                                         <template v-for="(question,index) in questions">
                                             <!--{{ question }} -->
-                                            <div :style="`position:absolute;z-index:10;width: 3px; top:-24px; left:${-2 + parseInt(554 * question.time/$refs.video.duration)}px`"><v-btn :class="{primary:(editQuestion && question.id === editQuestion.id)}" class="thin-button" @click="selectQuestion(question)">&#128488</v-btn></div>
-                                            <div v-for="(answer,index2) in question.answers.filter((a)=> a.action === 'pick')" :style="`position:absolute;width: 3px; top:-24px; left:${-2 + parseInt(554 * answer.time/$refs.video.duration)}px`">
+                                            <div :style="`position:absolute;z-index:10;width: 3px; top:-24px; left:${-2 + parseInt(554 * question.time/getVideoDuration())}px`"><v-btn :class="{primary:(editQuestion && question.id === editQuestion.id)}" class="thin-button" @click="selectQuestion(question)">&#128488</v-btn></div>
+                                            <div v-for="(answer,index2) in question.answers.filter((a)=> a.action === 'pick')" :style="`position:absolute;width: 3px; top:-24px; left:${-2 + parseInt(554 * answer.time/getVideoDuration())}px`">
                                                 <v-btn v-if="answer.time > -1" plain small :class="{timeSelected:question.id === editQuestion.id}" class="thin-button" @click="selectQuestion(question, answer)">|</v-btn>
                                             </div>
                                         </template>
-                                        <!--<div v-if="!isVideoTimeQuestionTime && !seekAnswerVideo && !seekQuestionVideo" :style="`position:absolute;z-index:9;width: 3px; top:-24px; left:${-2 + parseInt(554 * videoCurrentTime/$refs.video.duration)}px`">
+                                        <!--<div v-if="!isVideoTimeQuestionTime && !seekAnswerVideo && !seekQuestionVideo" :style="`position:absolute;z-index:9;width: 3px; top:-24px; left:${-2 + parseInt(554 * videoCurrentTime/getVideoDuration())}px`">
                                             <v-btn class="thin-button" @click="addQuestion()">+</v-btn>
                                         </div>-->
                                     </div>
