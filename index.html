@@ -41,7 +41,7 @@
     .preview-wrapper .time {
         bottom: -7px;
         background-color: #ffffff82;
-        z-index: 10;
+        z-index: 2;
         position: absolute;
         width: 40px;
         padding-left: 4px;
@@ -75,11 +75,10 @@
     .question-wrapper {
         position: relative;
         text-align: center;
-        background-color: rgba(255, 255, 255, 0.6);
-        padding: 10px;
         display: flex;
-        justify-content: center;
         align-items: center;
+        flex-direction: column;
+        justify-content: flex-end;
     }
 
     .question-wrapper>div>div {
@@ -87,18 +86,44 @@
     }
 
     .question-wrapper .title {
-        margin-bottom: 15px;
-        margin-top: 10px;
-        padding: 10px 50px;
-        font-size: 22px !important;
+        padding: 30px 43px 20px 43px;
+        font-size: 18px !important;
+        width: 100%;
+        background-color: black;
+        color: white;
+        border-top: 2px solid white;
+    }
+    .fade-in {
+
     }
 
+    @keyframes fadeInOpacity {
+        0% {
+            opacity: 0;
+        }
+        100% {
+            opacity: 1;
+        }
+    }
+    .question-answers {
+        width: 100%;
+        background-color: black;
+        padding: 0px 0px 30px 0px;
+    }
+
+    .question-answers button {
+        color: white !important;
+        opacity: 1;
+        animation-name: fadeInOpacity;
+        animation-iteration-count: 1;
+        animation-timing-function: ease-in;
+        animation-duration: 2s;
+    }
     .question-preview {
         position: absolute;
-        top: 0px;
-        left: 0px;
+        bottom: 0;
         z-index: 11;
-        height: 320px;
+        height: 380px;
         width: 100%;
     }
 
@@ -106,44 +131,85 @@
         color: #0275ff !important;
         font-size: 15px !important;
     }
+
+    #ytPlayer {
+        pointer-events: none;
+    }
+
+    .fade-enter-active {
+        transition: opacity 1s;
+    }
+    .fade-leave-active {
+        transition: opacity .5s;
+    }
+    .fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
+        opacity: 0;
+    }
 </style>
 <body>
     <v-app id="app" class="text-3xl">
         <v-app>
             <v-main>
                 <v-container>
-                    <v-row>
-                        <v-col cols="6">
+                    <v-row no-gutters>
+                        <v-col cols="12">
+                            <h1>Create Interactive Videos</h1>
+                        </v-col>
+                        <v-col cols="12" class="pr-10" style="max-width: 540px">
                             <v-row class="mt-2">
-                                <v-col cols="12">
+                                <v-col>
                                     <v-row style="z-index: 100;">
                                         <!--<v-text-field label="Video URL" v-model="filepathInput"></v-text-field>-->
                                         <v-combobox
                                         v-model="filepathInput"
-                                        label="Combobox"
+                                        label="Video Adress"
                                         :items="filepathHistory"
-                                        ></v-combobox>
+                                        >
+                                            <template #item="{ index, props, item }">
+                                                <v-list-item v-bind="props" :key="index">                                                
+                                                    <v-col cols="10">
+                                                        <div @click="filepathInput=item" plain><span class='text-sm text-gray-100'>{{ item }}</span></div>
+                                                    </v-col>
+                                                    <v-col cols="2">
+                                                        <v-btn @click="deleteHistory(item)" plain>&#128465;</v-btn>
+                                                    </v-col>
+                                                </v-list-item>
+                                            </template> 
+                                        </v-combobox>
                                         <v-btn v-if="filepath !== filepathInput" @click="loadFilepathInput()">Load</v-btn>
                                     </v-row>
-                                    <div style="position: relative; min-height: 320px;">
-                                        <div v-if="isYTVideo" id="ytPlayer" style="position:absolute;left:0px;top:0px;height:320px;"></div>
-                                        <video v-else ref="video" style="position:absolute;top:0px;left:0px;z-index:10;height:320px;" class="" id="video">
+                                    <div style="position: relative; min-height: 370px; background-color: #000;">
+                                        <div v-show="isYTVideo"><div id="ytPlayer" style="position:absolute;inset: 0px;width:100%;margin: auto;"></div></div>
+                                        <video v-show="!isYTVideo" ref="video" style="position:absolute;z-index:10;width:100%;inset: 0px; margin: auto;" class="" id="video">
                                             <source :src="filepath" type="video/mp4">
                                             </source>
                                         </video>
-                                        
-                                        <question-preview v-if="editQuestion !== null && isVideoTimeQuestionTime" :id="`question-preview-${editQuestion.id}`" class="question-preview" :key="editQuestion.id" :question="editQuestion" @choose-answer="(a) => chooseAnswer(a)" />
+                                        <transition name="fade">
+                                            <question-preview v-if="editQuestion !== null && isVideoTimeQuestionTime" :id="`question-preview-${editQuestion.id}`" class="question-preview" :key="editQuestion.id" :question="editQuestion" @choose-answer="(a) => chooseAnswer(a)" />
+                                        </transition>
                                     </div>
                                 </v-col>
                                 <v-col cols="12">
-                                    <input type="range" ref="videoRange" min="0" max="10000" value="0" style="width:100%" />
+                                    
                                 </v-col>
-                                <v-col cols="12" v-if="videoCurrentTime > -1">
+                                <v-col cols="12" v-if="getVideoCurrentTime() > -1">
+                                    <input type="range" ref="videoRange" min="0" max="10000" value="0" style="width:100%" />
                                     <div style="position: relative;">
                                         <template v-for="(question,index) in questions">
                                             <!--{{ question }} -->
-                                            <div :style="`position:absolute;z-index:10;width: 3px; top:-24px; left:${-2 + parseInt(554 * question.time/getVideoDuration())}px`"><v-btn :class="{primary:(editQuestion && question.id === editQuestion.id)}" class="thin-button" @click="selectQuestion(question)">&#128488</v-btn></div>
-                                            <div v-for="(answer,index2) in question.answers.filter((a)=> a.action === 'pick')" :style="`position:absolute;width: 3px; top:-24px; left:${-2 + parseInt(554 * answer.time/getVideoDuration())}px`">
+                                            <div
+                                                :style="`position:absolute;z-index:10;width: 3px; top:1px; left:${parseInt(0.975 * 100 * question.time/getVideoDuration())}%`"
+                                            >
+                                                <v-btn
+                                                    :class="{primary:(editQuestion && question.id === editQuestion.id)}"
+                                                    class="thin-button"
+                                                    @click="selectQuestion(question)"
+                                                >&#128488</v-btn>
+                                            </div>
+                                            <div
+                                                v-for="(answer,index2) in question.answers.filter((a)=> a.action === 'pick')"
+                                                :style="`position:absolute;width: 3px; top:-24px; left:${-2 + parseInt(538 * answer.time/getVideoDuration())}px`"
+                                            >
                                                 <v-btn v-if="answer.time > -1" plain small :class="{timeSelected:question.id === editQuestion.id}" class="thin-button" @click="selectQuestion(question, answer)">|</v-btn>
                                             </div>
                                         </template>
@@ -157,17 +223,21 @@
                                         <v-icon class="play-pause" v-if="videoPaused">mdi-play</v-icon>
                                         <v-icon class="play-pause" v-else>mdi-pause</v-icon>
                                     </v-btn>
-                                    <template v-if="firstPlayed">
-                                        <v-btn v-if="!isVideoTimeQuestionTime && !seekAnswerVideo && !seekQuestionVideo" @click="addQuestion()">Add Answer</v-btn>
+                                    <span class="text-button">{{ formattedCurrenTime }}/{{ formattedDuration }}</span>
+                                    <span class="pl-10" v-if="firstPlayed">
+                                        <!--isVideoTimeQuestionTime:{{ isVideoTimeQuestionTime }}
+                                        seekAnswerVideo: {{ seekAnswerVideo}}
+                                        seekQuestionVideo: {{ seekQuestionVideo }}-->
+                                        <v-btn v-if="!isVideoTimeQuestionTime && !seekAnswerVideo && !seekQuestionVideo" @click="addQuestion()">New Question</v-btn>
                                         <v-btn class="warning" v-else @click="deleteQuestion()">Delete Question</v-btn>
-                                    </template>
+                                    </span>
                                 </v-col>
                             </v-row>
                         </v-col>
-                        <v-col cols="6" v-if="editQuestion !== null && showQuestion" class="pt-12">
+                        <v-col cols="12" v-if="editQuestion !== null && showQuestion" class="pt-12"  style="max-width: 540px">
                             <v-row>
                                 <v-col cols="12" id="question-video-offset" class="video-seek">
-                                    <video-seek-preview :class="{active: seekQuestionVideo}" :key="questionKey" :draw-default="true" :time="editQuestion.time" :image="editQuestion.image" :reset="videoSeekReset" @select="$refs.video.currentTime = editQuestion.time" @time="setQuestionTime" />
+                                    <video-seek-preview :class="{active: seekQuestionVideo}" :key="questionKey" :draw-default="true" :time="editQuestion.time" :image="editQuestion.image" :reset="videoSeekReset" @select="setVideoCurrentTime(editQuestion.time)" @time="setQuestionTime" />
                                 </v-col>
                                 <v-col cols="12">
                                     <v-textarea v-model="editQuestion.title" rows="3" filled label="Text"></v-textarea>
@@ -182,7 +252,7 @@
                                 </v-col>
                                 <v-col v-if="answer.text.length > 0 && answer.action === 'pick'" cols="2">
                                     <div :id="`answer-seek-${answer.id}`" class="video-seek">
-                                        <video-seek-preview :draw-default="false" :time="answer.time" :image="answer.image" :reset="videoSeekReset" @select="$refs.video.currentTime = answer.time" @time="setAnswerTime(answer)" />
+                                        <video-seek-preview :draw-default="false" :time="answer.time" :image="answer.image" :reset="videoSeekReset" @select="getVideoCurrentTime() = answer.time" @time="setAnswerTime(answer)" />
                                     </div>
                                 </v-col>
                                 <v-col v-if="answer.text.length > 0 && answer.action === 'goTo'" cols="2">

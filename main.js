@@ -31,16 +31,24 @@ var app = new Vue({
     currentAnswer: null,
     videoSeekReset: 0,
     interactive: true,
-    videoCurrentTime: -1,
+    videoCurrentTime: 0,
+    videoDuration: 0,
     videoPaused: true,
     isVideoTimeQuestionTime: false,
-    firstPlayed: false
+    firstPlayed: false,
+    intervalWriteStorage: null,
+    intervalMain: null
   },
   mounted() {
     const s = localStorage.getItem('episodes');
     if (s) {
       const episodes = JSON.parse(s);
       this.filepathHistory = episodes.map((e) => e.filepath);
+    }
+    const item = localStorage.getItem('lastFilepath');
+    if (item) {
+      this.filepathInput = item;
+      this.loadFilepathInput();
     }
   },
   computed: {
@@ -63,6 +71,16 @@ var app = new Vue({
         a.push({ value: 'goTo', text: t('ANSWER_ACTION_GOTO_ANSWER') });
       }
       return a;
+    },
+    formattedCurrenTime() {
+      let secs = (parseInt(this.videoCurrentTime) % 60).toString();
+      if (secs.length < 2) secs = '0' + secs;
+      return parseInt(this.videoCurrentTime / 60) + ':' + secs; 
+    },
+    formattedDuration() {
+      let secs = (parseInt(this.videoDuration) % 60).toString();
+      if (secs.length < 2) secs = '0' + secs;
+      return parseInt(this.videoDuration / 60) + ':' + secs; 
     }
   },
   methods: {
@@ -70,6 +88,8 @@ var app = new Vue({
       return Math.round((n + Number.EPSILON) * 10) / 10;
     },
     init() {
+      clearInterval(this.intervalWriteStorage);
+      clearInterval(this.intervalMain);
       this.showQuestion = false;
       this.questions = [];
       console.log("all divs", document.querySelectorAll('div'));
@@ -93,24 +113,40 @@ var app = new Vue({
 
 
       const slider = this.$refs.videoRange;
-      const video = this.$refs.video;
-      const _self = this;
+      slider.value = 0;
+
+      let dragSlider = false;
+      if (this.isYTVideo) {
+        slider.onchange = () => {
+          console.log('state changed slider')
+          console.log('slider.value:', slider.value);
+          this.setVideoCurrentTime(this.getVideoDuration() / 10000.0 * slider.value);
+          dragSlider = false;
+        }
+      }
+
       slider.oninput = () => {
         console.log('slider.value:', slider.value);
-        this.setVideoCurrentTime(this.getVideoDuration() / 10000.0 * slider.value);
+        dragSlider = true;
+        if (!this.isYTVideo) {
+          this.setVideoCurrentTime(this.getVideoDuration() / 10000.0 * slider.value);
+          this.setPreviewImages();
+        }
+        
       }
-      let count = 0;
 
-      setInterval(() => {
+      this.intervalMain = setInterval(() => {
         if (this.interactive) {
           this.isVideoTimeQuestionTime = false;
+          if (!dragSlider) {
+            this.setSliderToCurrentTime();
+          }
           this.questions.forEach((q) => {
             if (this.isVideoTimeQuestionTime) return;
             this.isVideoTimeQuestionTime = this.round(q.time) === this.round(this.getVideoCurrentTime());
             if (this.isVideoTimeQuestionTime) {
               if (!this.seekAnswerVideo && !this.seekQuestionVideo) {
                 this.pauseVideo();
-                this.videoPaused = true;
                 this.editQuestion = q;
               }
             }
@@ -118,17 +154,22 @@ var app = new Vue({
         }
 
         this.videoCurrentTime = this.getVideoCurrentTime();
+        this.videoDuration = this.getVideoDuration();
 
       }, 100);
 
-      video.ontimeupdate = () => {
-        this.setPreviewImages();
-        this.firstPlayed = true;
+      if (!this.isYTVideo) {
+        const video = this.$refs.video;
+        video.ontimeupdate = () => {
+          this.setPreviewImages();
+          this.firstPlayed = true;
+        }
+  
+        video.onloadeddata = () => {
+          
+        }
       }
 
-      video.onloadeddata = () => {
-
-      }
       const s = localStorage.getItem('episodes');
       if (s) {
         const episodes = JSON.parse(s);
@@ -137,113 +178,133 @@ var app = new Vue({
           this.questions = episode.questions;
         }
       }
-      setInterval(() => {
+      this.intervalWriteStorage = setInterval(() => {
         const s = localStorage.getItem('episodes');
         const episodes = s ? JSON.parse(s) : [];
         let episode = episodes.find((e) => e.filepath === this.filepath);
+        const questionsDataPurged = this.questions;
+        /* TODO purge storage
+        const questionsDataPurged = Object.assign({}, ...this.questions);
+        questionsDataPurged.forEach((q) => {
+          q.image = null;
+        });
+        */
         if (!episode) {
           episodes.push({
             filepath: this.filepath,
-            questions: this.questions
+            questions: questionsDataPurged
           })
         } else {
-          episode.questions = this.questions
+          episode.questions = questionsDataPurged
         }
         localStorage.setItem('episodes', JSON.stringify(episodes));
+        localStorage.setItem('lastFilepath', this.filepath);
       }, 3000);
     },
     initYT() {
-      this.isYTVideo = true;
-      this.ytReady = false;
-      var tag = document.createElement('script');
-      tag.src = "https://www.youtube.com/iframe_api";
-      var firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
       let ytVideoiId = '';
       if (this.filepath.indexOf('/embed') > -1) {
         ytVideoiId = this.filepath.replace("https:\/\/www.youtube.com\/embed\/", "").split("?")[0];
       } else {
         ytVideoiId = this.filepath.replace("https:\/\/www.youtube.com\/watch?v=", "").split("&")[0];
       }
+      if (!this.ytReady) {
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-      window.onYouTubeIframeAPIReady = () => {
-        this.ytPlayer = new YT.Player('ytPlayer', {
-          videoId: ytVideoiId,
-          playerVars: {
-            'rel': 0, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'modestbranding': 1
-          },
-          events: {
-            'onReady': ytOnPlayerReady,
-            'onStateChange': ytOnPlayerStateChange
+        window.onYouTubeIframeAPIReady = () => {
+          this.ytPlayer = new YT.Player('ytPlayer', {
+            videoId: ytVideoiId,
+            playerVars: {
+              'rel': 0, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'modestbranding': 1
+            },
+            events: {
+              'onReady': ytOnPlayerReady,
+              'onStateChange': ytOnPlayerStateChange
+            }
+          });
+        }
+  
+        window.ytOnPlayerReady = (event) => {
+          // event.target.playVideo();
+          ytPlayer.target = event.target;
+          event.target.stopVideo();
+          console.log("ytOnPlayerReady");
+          this.ytReady = true;
+        };
+  
+  
+        window.ytOnPlayerStateChange = (event) => {
+          console.log("ytOnPlayerStateChange", event)
+          if (event.data === YT.PlayerState.ENDED) {
+            this.pauseVideo();
           }
-        });
-      }
-
-      window.ytOnPlayerReady = (event) => {
-        event.target.playVideo();
-        ytPlayer.target = event.target;
-        event.target.stopVideo();
-        console.log("ytOnPlayerReady");
-        this.ytReady = true;
-      };
-
-
-      window.ytOnPlayerStateChange = (event) => {
-        console.log("ytOnPlayerStateChange", event)
-        if (event.data === YT.PlayerState.ENDED) {
-          ytStopVideo();
+          if (event.data == YT.PlayerState.PLAYING) {
+  
+          }
         }
-        if (event.data == YT.PlayerState.PLAYING) {
-
-        }
-        console.log("ytOnPlayerStateChange:", event)
+      } else {
+        this.ytPlayer.loadVideoById(ytVideoiId);
+        setTimeout(() => this.pauseVideo(), 500);
       }
     },
 
     loadFilepathInput() {
       this.filepath = this.filepathInput;
       this.filepathHistory.push(this.filepath);
+      this.isYTVideo = false;
       if (this.filepath.includes("youtube")) {
-        console.log('load youtube');
+        this.isYTVideo = true;
         this.initYT();
       } else {
-        this.$refs.video.load();
-        this.$refs.video.play();
+        this.$nextTick(() => {
+          this.$refs.video.load();
+          // this.$refs.video.play();
+        });
       }
-      this.init();
+      this.$nextTick(() => {
+        this.init();
+      });
+    },
+    setSliderToCurrentTime() {
+      const slider = this.$refs.videoRange;
+      slider.value = this.getVideoCurrentTime() / this.getVideoDuration() * 10000.0;
     },
     setPreviewImages() {
-      const slider = this.$refs.videoRange;
-      slider.value = this.getVideoCurrentTime() / this.getVideoDuration * 10000.0;
-      if (this.seekQuestionVideo) {
-        this.editQuestion.image = this.getCurrentVideoImage();
-        // this.editQuestion.imageSize = this.editQuestion.image.length;
-        this.editQuestion.time = this.getVideoCurrentTime();
-      } else if (this.seekAnswerVideo && this.currentAnswer.action === 'pick') {
-        this.currentAnswer.image = this.getCurrentVideoImage();
-        this.currentAnswer.time = this.getVideoCurrentTime();
+      if (this.getVideoDuration() > 0) {
+        if (this.seekQuestionVideo) {
+          this.editQuestion.image = this.getCurrentVideoImage();
+          // this.editQuestion.imageSize = this.editQuestion.image.length;
+          this.editQuestion.time = this.getVideoCurrentTime();
+        } else if (this.seekAnswerVideo && this.currentAnswer.action === 'pick') {
+          this.currentAnswer.image = this.getCurrentVideoImage();
+          this.currentAnswer.time = this.getVideoCurrentTime();
+        }
       }
     },
     setVideoCurrentTime(t) {
       console.log('set current time:', t);
       if (this.isYTVideo) {
         this.ytPlayer.seekTo(t);
+        setTimeout(() => this.setSliderToCurrentTime(), 500);
       } else {
         this.$refs.video.currentTime = t;
       }
+      // this.pauseVideo();
     },
     getVideoCurrentTime() {
       if (this.isYTVideo) {
         return this.ytReady ? this.ytPlayer.getCurrentTime() : 0;
       }
-      return this.$refs.video.currentTime;
+      return this.$refs.video?.currentTime || 0;
     },
     getVideoDuration() {
       if (this.isYTVideo) {
         return this.ytReady ? this.ytPlayer.getDuration() : 0;
       }
-      return this.$refs.video.duration
+      return this.$refs.video?.duration || 0;
     },
     pauseVideo() {
       if (this.isYTVideo) {
@@ -253,10 +314,10 @@ var app = new Vue({
       } else {
         this.$refs.video.pause();
       }
+      this.videoPaused = true;
     },
     addQuestion() {
       this.pauseVideo();
-      this.videoPaused = true;
       this.questionKey = this.uuid();
       this.editQuestion = { id: this.uuid(), time: this.getVideoCurrentTime(), title: '', answers: [], image: 'about:blank' };
       this.questions.push(this.editQuestion);
@@ -299,7 +360,6 @@ var app = new Vue({
       this.seekAnswerVideo = false;
       this.questionKey = this.uuid();
       this.setVideoCurrentTime(question.time);
-
       setTimeout(() => {
         this.editQuestion = question;
         this.questionKey = uuid;
@@ -336,13 +396,14 @@ var app = new Vue({
     togglePlay() {
       if (this.isYTVideo) {
         if (this.videoPaused) {
-          ytPlayer.target.playVideo();
           ytPlayer.target.currentTime += 0.1;
+          ytPlayer.target.playVideo();
           this.interactive = true;
         } else {
           ytPlayer.target.pauseVideo();
           this.interactive = false;
         }
+        this.videoPaused = !this.videoPaused;
       } else {
         const v = this.$refs.video;
         if (this.videoPaused) {
@@ -358,18 +419,29 @@ var app = new Vue({
       this.firstPlayed = true;
       
     },
+    playVideo() {
+      this.videoPaused = false;
+      this.interactive = true;
+      if (this.isYTVideo) {
+        ytPlayer.target.currentTime += 0.1;
+        ytPlayer.target.playVideo();
+      } else {
+        const v = this.$refs.video;
+        v.currentTime += 0.1;
+        v.play();
+      }
+    },
     chooseAnswer(answer) {
       // TODO fade
       if (answer.action === 'pick') {
         this.setVideoCurrentTime(answer.time);
       } else if (answer.action === 'continue') {
-        this.setVideoCurrentTime(this.$refs.video.currentTime + 0.1);
+        this.setVideoCurrentTime(this.getVideoCurrentTime() + 0.1);
       } else if (answer.action === 'goTo') {
         const a = this.searchAnswerById(answer.goToId);
         this.setVideoCurrentTime(a.time + 0.1);
       }
       this.playVideo();
-      this.videoPaused = false;
     },
     searchAnswerById(id) {
       let answer = null;
@@ -382,6 +454,9 @@ var app = new Vue({
       });
       return answer;
     },
+    deleteHistory(item) {
+      this.filepathHistory.splice(this.filepathHistory.indexOf(item), 1);
+    },
     resetStorage() {
       localStorage.removeItem('questions');
       document.location.reload();
@@ -391,12 +466,12 @@ var app = new Vue({
 
 Vue.component('question-preview', {
   template: `
-  <div class="question-wrapper" v-if="question.title">
-      <div>
-          <div class="title" style="white-space:pre-line;">{{question.title}}</div>
-          <div v-for="(a,index) in question.answers">
-              <v-btn v-if="a.text.length > 0" @click="$emit('choose-answer', a)">{{a.text}}</v-btn>
-          </div>
+  <div class="question-wrapper">
+      <div class="title" style="white-space:pre-line;">{{question.title}}</div>
+      <div class="question-answers">
+          <template v-for="(a,index) in question.answers">
+              <v-btn plain v-if="a.text.length > 0" @click="$emit('choose-answer', a)">{{a.text}}</v-btn>
+          </template>
       </div>
   </div>
   `,
@@ -410,7 +485,6 @@ Vue.component('question-preview', {
   },
   mounted() {
     console.log('question mounted', this.t);
-
   },
   watch: {
     question() {
